@@ -1,0 +1,18 @@
+[package]
+name = "dsfmt-rs"
+version = "0.0.1"
+authors = ["Nick Tasios <nicktasios@gmail.com>"]
+
+[lib]
+name = "dsfmt"
+path = "src/lib.rs"
+
+[[bin]]
+name = "dsfmt"
+path = "src/lib.rs"
+
+[profile.dev]
+opt-level = 3
+
+[profile.test]
+opt-level = 3
