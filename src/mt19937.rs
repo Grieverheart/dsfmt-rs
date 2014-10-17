@@ -84,10 +84,6 @@ impl IndexMut<uint, u32> for u32x4{
     }
 }
 
-/**
- * This function simulate a 32-bit array index overlapped to 64-bit
- * array of LITTLE ENDIAN in BIG ENDIAN machine.
- */
 #[cfg(target_endian = "big")]
 fn idxof(i: uint) -> uint {
     i ^ 1
@@ -111,6 +107,7 @@ fn idxof(i: uint) -> uint {
 //}
 
 #[allow(unused)]
+#[inline(always)]
 fn do_recursion(r: &mut u64x2, a: u64x2, b: u64x2, u: &mut u64x2){
     let mut z = a;
     unsafe{asm!(
@@ -131,20 +128,19 @@ fn do_recursion(r: &mut u64x2, a: u64x2, b: u64x2, u: &mut u64x2){
 }
 
 impl DSFMTRng{
+    /// Create a new unseeded DSFMTRng instance
     pub fn new() -> DSFMTRng {
         DSFMTRng{status: [u64x2{x: 0, y: 0}, ..DSFMT_N + 1], idx: 0}
     }
 
+    /// Returns a new DSFMTRng seeded by seed
     pub fn from_seed(seed: u32) -> DSFMTRng {
         let mut rng = DSFMTRng::new();
-        rng.chk_init_gen_rand(seed);
+        rng.init(seed);
         rng
     }
 
-    /**
-     * This function initializes the internal state array to fit the IEEE
-     * 754 format.
-     */
+    /// Initializes the internal state array to fit the IEEE 754 format.
     fn initial_mask(&mut self){
         for i in range(0, DSFMT_N * 2){
             let (n, m) = (i / 2, i % 2);
@@ -152,10 +148,7 @@ impl DSFMTRng{
         }
     }
 
-    /**
-     * This function certificate the period of 2^{SFMT_MEXP}-1.
-     * @param dsfmt dsfmt state vector.
-     */
+    /// Certifies the period of 2^{SFMT_MEXP}-1.
     fn period_certification(&mut self) {
         let pcv: [u64, ..2] = [DSFMT_PCV1, DSFMT_PCV2];
 
@@ -193,7 +186,7 @@ impl DSFMTRng{
         }
     }
 
-    fn chk_init_gen_rand(&mut self, seed: u32) {
+    pub fn init(&mut self, seed: u32) {
         let psfmt: &mut [u32x4, ..DSFMT_N + 1] = unsafe{mem::transmute(&mut self.status)};
         let i = idxof(0);
         psfmt[i / 4][i % 4] = seed;
@@ -232,6 +225,7 @@ impl DSFMTRng{
         self.status[DSFMT_N] = lung;
     }
 
+    #[inline]
     pub fn genrand_close1_open2(&mut self) -> f64 {
         if self.idx >= DSFMT_N64 {
             self.gen_rand_all();
@@ -244,8 +238,34 @@ impl DSFMTRng{
         unsafe{mem::transmute(self.status[n][m])}
     }
 
+    #[inline]
     pub fn genrand_close_open(&mut self) -> f64 {
         self.genrand_close1_open2() - 1.0
+    }
+
+    #[inline]
+    pub fn genrand_u32(&mut self) -> u32 {
+        if self.idx >= DSFMT_N64 {
+            self.gen_rand_all();
+            self.idx = 0;
+        }
+
+        let (n, m) = (self.idx / 2, self.idx % 2);
+        self.idx += 1;
+        (self.status[n][m] & 0xffffffffu64) as u32
+    }
+
+    #[inline]
+    pub fn genrand_open_open(&mut self) -> f64 {
+        if self.idx >= DSFMT_N64 {
+            self.gen_rand_all();
+            self.idx = 0;
+        }
+
+        let (n, m) = (self.idx / 2, self.idx % 2);
+        self.idx += 1;
+
+        unsafe{mem::transmute::<u64, f64>(self.status[n][m] | 1u64) - 1.0f64}
     }
 }
 

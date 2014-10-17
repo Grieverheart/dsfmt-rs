@@ -7,10 +7,6 @@ authors = ["Nick Tasios <nicktasios@gmail.com>"]
 name = "dsfmt"
 path = "src/lib.rs"
 
-[[bin]]
-name = "dsfmt"
-path = "src/lib.rs"
-
 [profile.dev]
 opt-level = 3
 
