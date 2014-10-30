@@ -1,6 +1,8 @@
 use std::mem;
 use std::iter::range_inclusive;
 
+use std::rand::{Rng, SeedableRng, Rand};
+
 const DSFMT_MEXP:uint = 19937;
 const DSFMT_N:   uint = ((DSFMT_MEXP - 128) / 104 + 1);
 const DSFMT_N64: uint = (DSFMT_N * 2);
@@ -266,6 +268,38 @@ impl DSFMTRng{
         self.idx += 1;
 
         unsafe{mem::transmute::<u64, f64>(self.status[n][m] | 1u64) - 1.0f64}
+    }
+}
+
+impl Rng for DSFMTRng {
+    #[inline]
+    fn next_u32(&mut self) -> u32 {
+        if self.idx >= DSFMT_N64 {
+            self.gen_rand_all();
+            self.idx = 0;
+        }
+
+        let (n, m) = (self.idx / 2, self.idx % 2);
+        self.idx += 1;
+        (self.status[n][m] & 0xffffffffu64) as u32
+    }
+}
+
+impl SeedableRng<u32> for DSFMTRng {
+    fn reseed(&mut self, seed: u32){
+        self.init(seed);
+    }
+
+    fn from_seed(seed: u32) -> DSFMTRng {
+        let mut rng = DSFMTRng::new();
+        rng.init(seed);
+        rng
+    }
+}
+
+impl Rand for DSFMTRng {
+    fn rand<R: Rng>(other: &mut R) -> DSFMTRng {
+        SeedableRng::from_seed(other.next_u32())
     }
 }
 
