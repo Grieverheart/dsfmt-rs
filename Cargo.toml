@@ -2,6 +2,8 @@
 name = "dsfmt-rs"
 version = "0.0.1"
 authors = ["Nick Tasios <nicktasios@gmail.com>"]
+repository = "https://github.com/Grieverheart/dsfmt-rs"
+description = "Rust port of the dSFMT random number generator."
 
 [lib]
 name = "dsfmt"
