@@ -50,6 +50,7 @@ struct u64x2{
 }
 
 impl Index<uint, u64> for u64x2{
+    #[inline(always)]
     fn index(&self, _rhs: &uint) -> &u64{
         match *_rhs{
             0 => &self.x,
@@ -59,6 +60,7 @@ impl Index<uint, u64> for u64x2{
 }
 
 impl IndexMut<uint, u64> for u64x2{
+    #[inline(always)]
     fn index_mut(&mut self, _rhs: &uint) -> &mut u64{
         match *_rhs{
             0 => &mut self.x,
@@ -68,6 +70,7 @@ impl IndexMut<uint, u64> for u64x2{
 }
 
 impl Index<uint, u32> for u32x4{
+    #[inline(always)]
     fn index(&self, _rhs: &uint) -> &u32{
         match *_rhs{
             0 => &self.x,
@@ -79,6 +82,7 @@ impl Index<uint, u32> for u32x4{
 }
 
 impl IndexMut<uint, u32> for u32x4{
+    #[inline(always)]
     fn index_mut(&mut self, _rhs: &uint) -> &mut u32{
         match *_rhs{
             0 => &mut self.x,
