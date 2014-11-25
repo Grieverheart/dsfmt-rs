@@ -176,7 +176,7 @@ impl DSFMTRng{
             self.status[DSFMT_N][1] ^= 1;
         }
         else{
-            for i in range_inclusive(1, 0){
+            for i in range_inclusive(0, 1).rev() {
                 let mut work = 1u64;
                 for _ in range(0i, 64){
                     if (work & pcv[i]) != 0 {
