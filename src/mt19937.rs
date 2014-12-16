@@ -236,10 +236,13 @@ impl DSFMTRng{
             self.idx = 0;
         }
 
-        let (n, m) = (self.idx / 2, self.idx % 2);
+        let n = self.idx;
         self.idx += 1;
 
-        self.status[n][m]
+        let v = unsafe {
+            mem::transmute::<_, &[u64, .. 2 * (DSFMT_N + 1)]>(&self.status)
+        };
+        v[n]
     }
 
     #[inline]
