@@ -33,7 +33,7 @@ pub struct DSFMTRng{
 
 #[repr(C)]
 #[simd]
-#[deriving(Show)]
+#[deriving(Show, Copy)]
 struct u32x4{
     x: u32,
     y: u32,
@@ -43,7 +43,7 @@ struct u32x4{
 
 #[repr(C)]
 #[simd]
-#[deriving(Show)]
+#[deriving(Show, Copy)]
 struct u64x2{
     x: u64,
     y: u64,
