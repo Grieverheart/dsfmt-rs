@@ -23,8 +23,9 @@ const DSFMT_FIX2: u64  = 0x3b8d12ac548a7c7a;
 const DSFMT_MSK1: u64  = 0x000ffafffffffb3f;
 const DSFMT_MSK2: u64  = 0x000ffdfffc90fffd;
 
-const SSE2_SHUFF: u8 = 0x1b;
 const SSE2_PARAMS_MASK: u64x2 = u64x2{x: DSFMT_MSK1, y: DSFMT_MSK2};
+const SSE2_SL: u64x2 = u64x2{x: DSFMT_SL1 as u64, y: DSFMT_SL1 as u64};
+const SSE2_SR: u64x2 = u64x2{x: DSFMT_SR as u64, y: DSFMT_SR as u64};
 
 pub struct DSFMTRng{
     status: [u64x2, ..DSFMT_N + 1],
@@ -33,7 +34,7 @@ pub struct DSFMTRng{
 
 #[repr(C)]
 #[simd]
-#[deriving(Show)]
+#[deriving(Show, Copy)]
 struct u32x4{
     x: u32,
     y: u32,
@@ -43,7 +44,7 @@ struct u32x4{
 
 #[repr(C)]
 #[simd]
-#[deriving(Show)]
+#[deriving(Show, Copy)]
 struct u64x2{
     x: u64,
     y: u64,
@@ -117,25 +118,23 @@ fn idxof(i: uint) -> uint {
 //    r[1] = ((*lung)[1] >> DSFMT_SR) ^ ((*lung)[1] & DSFMT_MSK2) ^ t1;
 //}
 
+#[inline(always)]
+pub fn reverse_u32s(u: u64x2) -> u64x2 {
+    unsafe {
+        let tmp = mem::transmute::<_, u32x4>(u);
+        let swapped = u32x4 {x: tmp.w, y: tmp.z, z: tmp.y, w: tmp.x};
+        mem::transmute::<_, u64x2>(swapped)
+    }
+}
+
 #[allow(unused)]
 #[inline(always)]
 fn do_recursion(r: &mut u64x2, a: u64x2, b: u64x2, u: &mut u64x2){
-    let mut z = a;
-    unsafe{asm!(
-        "psllq  $4, $0\n\t
-         pxor   $8, $0\n\t
-         pshufd $3, $1, $1\n\t
-         pxor   $0, $1\n\t
-         movaps $1, $0\n\t
-         movaps $1, $2\n\t
-         pand   $6, $0\n\t
-         psrlq  $5, $2\n\t
-         pxor   $7, $2\n\t
-         pxor   $0, $2\n\t
-        "
-        :"+x"(z), "+x"(*u), "=x"(*r)
-        :"i"(SSE2_SHUFF), "i"(DSFMT_SL1), "i"(DSFMT_SR), "x"(SSE2_PARAMS_MASK), "m"(a), "x"(b)
-    )};
+    let swapped = reverse_u32s(*u);
+    let uu = (a << SSE2_SL) ^ b ^ swapped;
+
+    *r = (uu >> SSE2_SR) ^ (uu & SSE2_PARAMS_MASK) ^ a;
+    *u = uu;
 }
 
 impl DSFMTRng{
@@ -177,7 +176,7 @@ impl DSFMTRng{
             self.status[DSFMT_N][1] ^= 1;
         }
         else{
-            for i in range_inclusive(1, 0){
+            for i in range_inclusive(0, 1).rev() {
                 let mut work = 1u64;
                 for _ in range(0i, 64){
                     if (work & pcv[i]) != 0 {
@@ -288,4 +287,3 @@ impl Rand for DSFMTRng {
         SeedableRng::from_seed(other.next_u32())
     }
 }
-
