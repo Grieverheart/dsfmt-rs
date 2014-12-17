@@ -12,7 +12,7 @@ fn bench_mt19937_1_000_000_rands(b: &mut Bencher){
 
     b.iter(||{
         for _ in range(1u, 1_000_000){
-            rng.next_f64();
+            test::black_box(rng.next_f64());
         }
     });
 }
@@ -23,7 +23,7 @@ fn bench_isaac64_1_000_000_rands(b: &mut Bencher){
 
     b.iter(||{
         for _ in range(1u, 1_000_000){
-            rng.next_f64();
+            test::black_box(rng.next_f64());
         }
     });
 }
@@ -34,7 +34,7 @@ fn bench_xor_1_000_000_rands(b: &mut Bencher){
 
     b.iter(||{
         for _ in range(1u, 1_000_000){
-            rng.next_f64();
+            test::black_box(rng.next_f64());
         }
     });
 }
