@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Nick Tasios <nicktasios@gmail.com>"]
 repository = "https://github.com/Grieverheart/dsfmt-rs"
 description = "Rust port of the dSFMT random number generator."
+license-file = "LICENSE"
 
 [lib]
 name = "dsfmt"
