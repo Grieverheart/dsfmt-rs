@@ -205,7 +205,7 @@ impl DSFMTRng{
         self.idx = DSFMT_N64;
     }
 
-    #[inline]
+    #[inline(never)]
     fn gen_rand_all(&mut self){
         let mut lung = self.status[DSFMT_N];
         {
