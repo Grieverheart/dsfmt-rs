@@ -1,6 +1,6 @@
 [package]
 name = "dsfmt-rs"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Nick Tasios <nicktasios@gmail.com>"]
 repository = "https://github.com/Grieverheart/dsfmt-rs"
 description = "Rust port of the dSFMT random number generator."
@@ -9,6 +9,9 @@ license-file = "LICENSE"
 [lib]
 name = "dsfmt"
 path = "src/lib.rs"
+
+[dependencies]
+rand = "0.1"
 
 [profile.dev]
 opt-level = 3

@@ -1,7 +1,6 @@
 use std::mem;
-use std::iter::range_inclusive;
-
-use std::rand::{Rng, SeedableRng, Rand};
+use rand::{Rng, SeedableRng, Rand};
+use std::ops::{Index, IndexMut};
 
 const DSFMT_LOW_MASK:   u64 = 0x000FFFFFFFFFFFFF;
 const DSFMT_HIGH_CONST: u64 = 0x3FF0000000000000;
@@ -9,13 +8,13 @@ const DSFMT_HIGH_CONST: u64 = 0x3FF0000000000000;
 const DSFMT_F32_MANTISSA_MASK: u64 = 0x00000000007FFFFF;
 const DSFMT_HIGH_CONST32:      u32 = 0x3F800000;
 
-const DSFMT_MEXP:uint = 19937;
-const DSFMT_N:   uint = ((DSFMT_MEXP - 128) / 104 + 1);
-const DSFMT_N64: uint = (DSFMT_N * 2);
-const DSFMT_SR:  uint = 12;
+const DSFMT_MEXP:usize = 19937;
+const DSFMT_N:   usize = ((DSFMT_MEXP - 128) / 104 + 1);
+const DSFMT_N64: usize = (DSFMT_N * 2);
+const DSFMT_SR:  usize = 12;
 
-const DSFMT_POS1: uint = 117;
-const DSFMT_SL1:  uint = 19;
+const DSFMT_POS1: usize = 117;
+const DSFMT_SL1:  usize = 19;
 const DSFMT_PCV1: u64  = 0x3d84e1ac0dc82880;
 const DSFMT_PCV2: u64  = 0x0000000000000001;
 const DSFMT_FIX1: u64  = 0x90014964b32f4329;
@@ -28,13 +27,13 @@ const SSE2_SL: u64x2 = u64x2{x: DSFMT_SL1 as u64, y: DSFMT_SL1 as u64};
 const SSE2_SR: u64x2 = u64x2{x: DSFMT_SR as u64, y: DSFMT_SR as u64};
 
 pub struct DSFMTRng{
-    status: [u64x2, ..DSFMT_N + 1],
-    idx: uint,
+    status: [u64x2; DSFMT_N + 1],
+    idx: usize,
 }
 
 #[repr(C)]
 #[simd]
-#[deriving(Show, Copy)]
+#[derive(Debug, Copy)]
 struct u32x4{
     x: u32,
     y: u32,
@@ -44,15 +43,16 @@ struct u32x4{
 
 #[repr(C)]
 #[simd]
-#[deriving(Show, Copy)]
+#[derive(Debug, Copy)]
 struct u64x2{
     x: u64,
     y: u64,
 }
 
-impl Index<uint, u64> for u64x2{
+impl Index<usize> for u64x2{
+    type Output = u64;
     #[inline(always)]
-    fn index(&self, _rhs: &uint) -> &u64{
+    fn index(&self, _rhs: &usize) -> &u64{
         match *_rhs{
             0 => &self.x,
             _ => &self.y,
@@ -60,9 +60,9 @@ impl Index<uint, u64> for u64x2{
     }
 }
 
-impl IndexMut<uint, u64> for u64x2{
+impl IndexMut<usize> for u64x2{
     #[inline(always)]
-    fn index_mut(&mut self, _rhs: &uint) -> &mut u64{
+    fn index_mut(&mut self, _rhs: &usize) -> &mut u64{
         match *_rhs{
             0 => &mut self.x,
             _ => &mut self.y,
@@ -70,9 +70,10 @@ impl IndexMut<uint, u64> for u64x2{
     }
 }
 
-impl Index<uint, u32> for u32x4{
+impl Index<usize> for u32x4{
+    type Output = u32;
     #[inline(always)]
-    fn index(&self, _rhs: &uint) -> &u32{
+    fn index(&self, _rhs: &usize) -> &u32{
         match *_rhs{
             0 => &self.x,
             1 => &self.y,
@@ -82,9 +83,9 @@ impl Index<uint, u32> for u32x4{
     }
 }
 
-impl IndexMut<uint, u32> for u32x4{
+impl IndexMut<usize> for u32x4{
     #[inline(always)]
-    fn index_mut(&mut self, _rhs: &uint) -> &mut u32{
+    fn index_mut(&mut self, _rhs: &usize) -> &mut u32{
         match *_rhs{
             0 => &mut self.x,
             1 => &mut self.y,
@@ -95,12 +96,12 @@ impl IndexMut<uint, u32> for u32x4{
 }
 
 #[cfg(target_endian = "big")]
-fn idxof(i: uint) -> uint {
+fn idxof(i: usize) -> usize {
     i ^ 1
 }
 
 #[cfg(target_endian = "little")]
-fn idxof(i: uint) -> uint {
+fn idxof(i: usize) -> usize {
     i
 }
 
@@ -140,12 +141,12 @@ fn do_recursion(r: &mut u64x2, a: u64x2, b: u64x2, u: &mut u64x2){
 impl DSFMTRng{
     /// Create a new unseeded DSFMTRng instance
     pub fn new_unseeded() -> DSFMTRng {
-        DSFMTRng{status: [u64x2{x: 0, y: 0}, ..DSFMT_N + 1], idx: 0}
+        DSFMTRng{status: [u64x2{x: 0, y: 0}; DSFMT_N + 1], idx: 0}
     }
 
     /// Initializes the internal state array to fit the IEEE 754 format.
     fn initial_mask(&mut self){
-        for i in range(0, DSFMT_N * 2){
+        for i in 0..DSFMT_N * 2 {
             let (n, m) = (i / 2, i % 2);
             self.status[n][m] = (self.status[n][m] & DSFMT_LOW_MASK) | DSFMT_HIGH_CONST;
         }
@@ -153,13 +154,13 @@ impl DSFMTRng{
 
     /// Certifies the period of 2^{SFMT_MEXP}-1.
     fn period_certification(&mut self) {
-        let pcv: [u64, ..2] = [DSFMT_PCV1, DSFMT_PCV2];
+        let pcv: [u64; 2] = [DSFMT_PCV1, DSFMT_PCV2];
 
         {
             let tmp = [self.status[DSFMT_N][0] ^ DSFMT_FIX1, self.status[DSFMT_N][1] ^ DSFMT_FIX2];
             let mut inner = (tmp[0] & pcv[0]) ^ (tmp[1] & pcv[1]);
 
-            let mut i = 32u;
+            let mut i: usize = 32;
             while i > 0 {
                 inner ^= inner >> i;
                 i >>= 1;
@@ -176,9 +177,9 @@ impl DSFMTRng{
             self.status[DSFMT_N][1] ^= 1;
         }
         else{
-            for i in range_inclusive(0, 1).rev() {
+            for i in (0..2).rev() {
                 let mut work = 1u64;
-                for _ in range(0i, 64){
+                for _ in 0..64{
                     if (work & pcv[i]) != 0 {
                         self.status[DSFMT_N][i] ^= work;
                         return;
@@ -190,11 +191,11 @@ impl DSFMTRng{
     }
 
     fn init(&mut self, seed: u32) {
-        let psfmt: &mut [u32x4, ..DSFMT_N + 1] = unsafe{mem::transmute(&mut self.status)};
+        let psfmt: &mut [u32x4; DSFMT_N + 1] = unsafe{mem::transmute(&mut self.status)};
         let i = idxof(0);
         psfmt[i / 4][i % 4] = seed;
 
-        for i in range(1u, 4 * (DSFMT_N + 1)){
+        for i in 1..4 * (DSFMT_N + 1) {
             let idx1 = idxof(i);
             let idx2 = idxof(i - 1);
             psfmt[idx1 / 4][idx1 % 4] = 1812433253u32 * (psfmt[idx2 / 4][idx2 % 4] ^ (psfmt[idx2 / 4][idx2 % 4] >> 30)) + (i as u32);
@@ -213,7 +214,7 @@ impl DSFMTRng{
             let b = self.status[DSFMT_POS1];
             do_recursion(&mut self.status[0], a, b, &mut lung);
         }
-        let mut i = 1u;
+        let mut i: usize = 1;
         while i < DSFMT_N - DSFMT_POS1 {
             let a = self.status[i];
             let b = self.status[i + DSFMT_POS1];
@@ -240,7 +241,7 @@ impl DSFMTRng{
         self.idx += 1;
 
         let v = unsafe {
-            mem::transmute::<_, &[u64, .. 2 * (DSFMT_N + 1)]>(&self.status)
+            mem::transmute::<_, &[u64; 2 * (DSFMT_N + 1)]>(&self.status)
         };
         v[n]
     }
